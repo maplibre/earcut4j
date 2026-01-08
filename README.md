@@ -5,7 +5,7 @@
 
 ## earcut4j
 
-[![CI](https://github.com/louwers/earcut4j/actions/workflows/ci.yml/badge.svg)](https://github.com/louwers/earcut4j/actions/workflows/ci.yml) [![Maven Central Version](https://img.shields.io/maven-central/v/nl.bartlouwers/earcut4j)](https://central.sonatype.com/artifact/nl.bartlouwers/earcut4j)
+[![CI](https://github.com/louwers/earcut4j/actions/workflows/ci.yml/badge.svg)](https://github.com/louwers/earcut4j/actions/workflows/ci.yml) [![Maven Central Version](https://img.shields.io/maven-central/v/nl.bartlouwers/earcut4j)](https://central.sonatype.com/artifact/nl.bartlouwers/earcut4j) [![](https://img.shields.io/badge/Slack-%23maplibre-2EB67D?logo=slack)](https://slack.openstreetmap.us/)
 
 This triangulation library is based on the javascript version located in [@mapbox/earcut](https://github.com/mapbox/earcut). It is a fork of [earcut4j/earcut4j](https://github.com/earcut4j/earcut4j) now maintained as a [MapLibre](https://maplibre.org/) project.
 
@@ -74,6 +74,7 @@ double deviation = Earcut.deviation(data, holes, dimensions, triangles);
 ```
 
 If you pass a single vertice as a hole, Earcut treats it as a Steiner point.
+
 
 
 
