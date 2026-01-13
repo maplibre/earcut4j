@@ -3,4 +3,4 @@
 .classpath
 
 release.properties
-pom.xml.releaseBackup
+.gradle

@@ -1,4 +1,4 @@
-package earcut4j;
+package nl.bartlouwers.earcut4j;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -70,10 +70,10 @@ public final class Earcut {
             // minX, minY and size are later used to transform coords into
             // integers for z-order calculation
             invSize = Math.max(maxX - minX, maxY - minY);
-            invSize = invSize != 0.0 ? 1.0 / invSize : 0.0;
+            invSize = invSize != 0.0 ? 32767.0 / invSize : 0.0;
         }
 
-        earcutLinked(outerNode, triangles, dim, minX, minY, invSize, Integer.MIN_VALUE);
+        earcutLinked(outerNode, triangles, dim, minX, minY, invSize, 0);
 
         return triangles;
     }
@@ -83,11 +83,10 @@ public final class Earcut {
             return;
 
         // interlink polygon nodes in z-order
-        if (pass == Integer.MIN_VALUE && invSize != Double.MIN_VALUE)
+        if (pass == 0 && invSize != Double.MIN_VALUE)
             indexCurve(ear, minX, minY, invSize);
 
         Node stop = ear;
-
         // iterate through ears, slicing them one by one
         while (ear.prev != ear.next) {
             Node prev = ear.prev;
@@ -95,9 +94,9 @@ public final class Earcut {
 
             if (invSize != Double.MIN_VALUE ? isEarHashed(ear, minX, minY, invSize) : isEar(ear)) {
                 // cut off the triangle
-                triangles.add(prev.i / dim);
-                triangles.add(ear.i / dim);
-                triangles.add(next.i / dim);
+                triangles.add(prev.i);
+                triangles.add(ear.i);
+                triangles.add(next.i);
 
                 removeNode(ear);
 
@@ -114,7 +113,7 @@ public final class Earcut {
             // any more ears
             if (ear == stop) {
                 // try filtering points and slicing again
-                if (pass == Integer.MIN_VALUE) {
+                if (pass == 0) {
                     earcutLinked(filterPoints(ear, null), triangles, dim, minX, minY, invSize, 1);
 
                     // if this didn't work, try curing all small
@@ -149,8 +148,8 @@ public final class Earcut {
                     c = filterPoints(c, c.next);
 
                     // run earcut on each half
-                    earcutLinked(a, triangles, dim, minX, minY, size, Integer.MIN_VALUE);
-                    earcutLinked(c, triangles, dim, minX, minY, size, Integer.MIN_VALUE);
+                    earcutLinked(a, triangles, dim, minX, minY, size, 0);
+                    earcutLinked(c, triangles, dim, minX, minY, size, 0);
                     return;
                 }
                 b = b.next;
@@ -162,7 +161,7 @@ public final class Earcut {
     private static boolean isValidDiagonal(Node a, Node b) {
         //return a.next.i != b.i && a.prev.i != b.i && !intersectsPolygon(a, b) && locallyInside(a, b) && locallyInside(b, a) && middleInside(a, b);
 
-        return a.next.i != b.i && a.prev.i != b.i && !intersectsPolygon(a, b) && // dones't intersect other edges
+        return a.next.i != b.i && a.prev.i != b.i && !intersectsPolygon(a, b) && // doesn't intersect other edges
             (locallyInside(a, b) && locallyInside(b, a) && middleInside(a, b) && // locally visible
             (area(a.prev, a, b.prev) != 0 || area(a, b.prev, b) != 0) || // does not create opposite-facing sectors
             equals(a, b) && area(a.prev, a, a.next) > 0 && area(b.prev, b, b.next) > 0); // special zero-length case
@@ -174,7 +173,8 @@ public final class Earcut {
         double px = (a.x + b.x) / 2;
         double py = (a.y + b.y) / 2;
         do {
-            if (((p.y > py) != (p.next.y > py)) && (px < (p.next.x - p.x) * (py - p.y) / (p.next.y - p.y) + p.x))
+            if (((p.y > py) != (p.next.y > py)) && p.next.y != p.y &&
+                (px < (p.next.x - p.x) * (py - p.y) / (p.next.y - p.y) + p.x))
                 inside = !inside;
             p = p.next;
         } while (p != a);
@@ -194,8 +194,6 @@ public final class Earcut {
     }
 
     private static boolean intersects(Node p1, Node q1, Node p2, Node q2) {
-        if ((equals(p1, p2) && equals(q1, q2)) || (equals(p1, q2) && equals(p2, q1)))
-            return true;
         double o1 = sign(area(p1, q1, p2));
         double o2 = sign(area(p1, q1, q2));
         double o3 = sign(area(p2, q2, p1));
@@ -232,9 +230,9 @@ public final class Earcut {
 
             if (!equals(a, b) && intersects(a, p, p.next, b) && locallyInside(a, b) && locallyInside(b, a)) {
 
-                triangles.add(a.i / dim);
-                triangles.add(p.i / dim);
-                triangles.add(b.i / dim);
+                triangles.add(a.i);
+                triangles.add(p.i);
+                triangles.add(b.i);
 
                 // remove two nodes involved
                 removeNode(p);
@@ -255,10 +253,10 @@ public final class Earcut {
             return false; // reflex, can't be an ear
 
         // now make sure we don't have other points inside the potential ear
-        Node p = ear.next.next;
+        Node p = c.next;
 
-        while (p != ear.prev) {
-            if (pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) && area(p.prev, p, p.next) >= 0)
+        while (p != a) {
+            if (pointInTriangleExceptFirst(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) && area(p.prev, p, p.next) >= 0)
                 return false;
             p = p.next;
         }
@@ -287,25 +285,25 @@ public final class Earcut {
         Node n = ear.nextZ;
 
         while (p != null && p.z >= minZ && n != null && n.z <= maxZ) {
-            if (p != ear.prev && p != ear.next && pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) && area(p.prev, p, p.next) >= 0)
+            if (p != ear.prev && p != ear.next && pointInTriangleExceptFirst(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) && area(p.prev, p, p.next) >= 0)
                 return false;
             p = p.prevZ;
 
-            if (n != ear.prev && n != ear.next && pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, n.x, n.y) && area(n.prev, n, n.next) >= 0)
+            if (n != ear.prev && n != ear.next && pointInTriangleExceptFirst(a.x, a.y, b.x, b.y, c.x, c.y, n.x, n.y) && area(n.prev, n, n.next) >= 0)
                 return false;
             n = n.nextZ;
         }
 
         // look for remaining points in decreasing z-order
         while (p != null && p.z >= minZ) {
-            if (p != ear.prev && p != ear.next && pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) && area(p.prev, p, p.next) >= 0)
+            if (p != ear.prev && p != ear.next && pointInTriangleExceptFirst(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) && area(p.prev, p, p.next) >= 0)
                 return false;
             p = p.prevZ;
         }
 
         // look for remaining points in increasing z-order
         while (n != null && n.z <= maxZ) {
-            if (n != ear.prev && n != ear.next && pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, n.x, n.y) && area(n.prev, n, n.next) >= 0)
+            if (n != ear.prev && n != ear.next && pointInTriangleExceptFirst(a.x, a.y, b.x, b.y, c.x, c.y, n.x, n.y) && area(n.prev, n, n.next) >= 0)
                 return false;
             n = n.nextZ;
         }
@@ -316,8 +314,8 @@ public final class Earcut {
     // z-order of a point given coords and inverse of the longer side of data bbox
     private static double zOrder(double x, double y, double minX, double minY, double invSize) {
         // coords are transformed into non-negative 15-bit integer range
-        int lx = Double.valueOf(32767 * (x - minX) * invSize).intValue();
-        int ly = Double.valueOf(32767 * (y - minY) * invSize).intValue();
+        int lx = (int) ((x - minX) * invSize);
+        int ly = (int) ((y - minY) * invSize);
 
         lx = (lx | (lx << 8)) & 0x00FF00FF;
         lx = (lx | (lx << 4)) & 0x0F0F0F0F;
@@ -429,17 +427,23 @@ public final class Earcut {
 
             @Override
             public int compare(Node o1, Node o2) {
-                if (o1.x - o2.x > 0)
-                    return 1;
-                else if (o1.x - o2.x < 0)
-                    return -2;
-                return 0;
+                double result = o1.x - o2.x;
+                // when the left-most point of 2 holes meet at a vertex, sort the holes counterclockwise so that when we find
+                // the bridge to the outer shell is always the point that they meet at.
+                if (result == 0) {
+                    result = o1.y - o2.y;
+                    if (result == 0) {
+                        double aSlope = (o1.next.y - o1.y) / (o1.next.x - o1.x);
+                        double bSlope = (o2.next.y - o2.y) / (o2.next.x - o2.x);
+                        result = aSlope - bSlope;
+                    }
+                }
+                return result > 0 ? 1 : (result < 0 ? -1 : 0);
             }
         });
 
         for (Node node : queue) {
-            eliminateHole(node, outerNode);
-            outerNode = filterPoints(outerNode, outerNode.next);
+            outerNode = eliminateHole(node, outerNode);
         }
 
         return outerNode;
@@ -457,7 +461,7 @@ public final class Earcut {
         do {
             again = false;
 
-            if (!p.steiner && equals(p, p.next) || area(p.prev, p, p.next) == 0) {
+            if (!p.steiner && (equals(p, p.next) || area(p.prev, p, p.next) == 0)) {
                 removeNode(p);
                 p = end = p.prev;
                 if (p == p.next)
@@ -479,15 +483,16 @@ public final class Earcut {
         return (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
     }
 
-    private static void eliminateHole(Node hole, Node outerNode) {
-        outerNode = findHoleBridge(hole, outerNode);
-        if (outerNode != null) {
-            Node b = splitPolygon(outerNode, hole);
+    private static Node eliminateHole(Node hole, Node outerNode) {
+        Node bridge = findHoleBridge(hole, outerNode);
+        if (bridge != null) {
+            Node b = splitPolygon(bridge, hole);
             
             // filter collinear points around the cuts
-            filterPoints(outerNode, outerNode.next);
             filterPoints(b, b.next);
+            return filterPoints(bridge, bridge.next);
         }
+        return outerNode;
     }
 
     private static Node splitPolygon(Node a, Node b) {
@@ -523,18 +528,16 @@ public final class Earcut {
         // find a segment intersected by a ray from the hole's leftmost point to
         // the left;
         // segment's endpoint with lesser x will be potential connection point
+        // unless they intersect at a vertex, then choose the vertex
+        if (equals(hole, p)) return p;
         do {
-            if (hy <= p.y && hy >= p.next.y) {
+            if (equals(hole, p.next)) return p.next;
+            else if (hy <= p.y && hy >= p.next.y && p.next.y != p.y) {
                 double x = p.x + (hy - p.y) * (p.next.x - p.x) / (p.next.y - p.y);
                 if (x <= hx && x > qx) {
                     qx = x;
-                    if (x == hx) {
-                        if (hy == p.y)
-                            return p;
-                        if (hy == p.next.y)
-                            return p.next;
-                    }
                     m = p.x < p.next.x ? p : p.next;
+                    if (x == hx) return m; // hole touches outer segment; pick leftmost endpoint
                 }
             }
             p = p.next;
@@ -561,7 +564,8 @@ public final class Earcut {
         p = m;
 
         do {
-            if (hx >= p.x && p.x >= mx && pointInTriangle(hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy, p.x, p.y)) {
+            if (hx >= p.x && p.x >= mx && hx != p.x &&
+                pointInTriangle(hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy, p.x, p.y)) {
 
                 tan = Math.abs(hy - p.y) / (hx - p.x); // tangential
 
@@ -588,8 +592,13 @@ public final class Earcut {
     }
 
     private static boolean pointInTriangle(double ax, double ay, double bx, double by, double cx, double cy, double px, double py) {
-        return (cx - px) * (ay - py) - (ax - px) * (cy - py) >= 0 && (ax - px) * (by - py) - (bx - px) * (ay - py) >= 0
-                && (bx - px) * (cy - py) - (cx - px) * (by - py) >= 0;
+        return (cx - px) * (ay - py) >= (ax - px) * (cy - py) &&
+               (ax - px) * (by - py) >= (bx - px) * (ay - py) &&
+               (bx - px) * (cy - py) >= (cx - px) * (by - py);
+    }
+
+    private static boolean pointInTriangleExceptFirst(double ax, double ay, double bx, double by, double cx, double cy, double px, double py) {
+        return !(ax == px && ay == py) && pointInTriangle(ax, ay, bx, by, cx, cy, px, py);
     }
 
     private static Node getLeftmost(Node start) {
@@ -607,11 +616,11 @@ public final class Earcut {
         Node last = null;
         if (clockwise == (signedArea(data, start, end, dim) > 0)) {
             for (int i = start; i < end; i += dim) {
-                last = insertNode(i, data[i], data[i + 1], last);
+                last = insertNode(i / dim, data[i], data[i + 1], last);
             }
         } else {
             for (int i = (end - dim); i >= start; i -= dim) {
-                last = insertNode(i, data[i], data[i + 1], last);
+                last = insertNode(i / dim, data[i], data[i + 1], last);
             }
         }
 
@@ -657,6 +666,43 @@ public final class Earcut {
             j = i;
         }
         return sum;
+    }
+
+    /**
+     * Calculates the relative difference between the total area of triangles and the area of the input polygon.
+     * 0 means the triangulation is fully correct.
+     * 
+     * @param data is a flat array of vertex coordinates like [x0,y0, x1,y1, x2,y2, ...].
+     * @param holeIndices is an array of hole indices if any.
+     * @param dim is the number of coordinates per vertex in the input array.
+     * @param triangles is the triangulation result from earcut.
+     * @return the relative difference between triangle area and polygon area.
+     */
+    public static double deviation(double[] data, int[] holeIndices, int dim, List<Integer> triangles) {
+        boolean hasHoles = holeIndices != null && holeIndices.length > 0;
+        int outerLen = hasHoles ? holeIndices[0] * dim : data.length;
+
+        double polygonArea = Math.abs(signedArea(data, 0, outerLen, dim));
+        if (hasHoles) {
+            for (int i = 0; i < holeIndices.length; i++) {
+                int start = holeIndices[i] * dim;
+                int end = i < holeIndices.length - 1 ? holeIndices[i + 1] * dim : data.length;
+                polygonArea -= Math.abs(signedArea(data, start, end, dim));
+            }
+        }
+
+        double trianglesArea = 0;
+        for (int i = 0; i < triangles.size(); i += 3) {
+            int a = triangles.get(i) * dim;
+            int b = triangles.get(i + 1) * dim;
+            int c = triangles.get(i + 2) * dim;
+            trianglesArea += Math.abs(
+                (data[a] - data[c]) * (data[b + 1] - data[a + 1]) -
+                (data[a] - data[b]) * (data[c + 1] - data[a + 1]));
+        }
+
+        return polygonArea == 0 && trianglesArea == 0 ? 0 :
+            Math.abs((trianglesArea - polygonArea) / polygonArea);
     }
 
     private static class Node {
