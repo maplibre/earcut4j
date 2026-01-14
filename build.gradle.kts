@@ -30,6 +30,7 @@ tasks.test {
 // Create a lazy version provider that only executes during publishing
 val versionProvider = provider {
     if (gradle.startParameter.taskNames.any { it.contains("publish") }) {
+        @Suppress("UNCHECKED_CAST")
         val getVersionFunc = extra["getVersionFromGitTag"] as () -> String
         getVersionFunc()
     } else {
