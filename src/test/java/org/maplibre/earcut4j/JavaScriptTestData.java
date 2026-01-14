@@ -1,4 +1,4 @@
-package nl.bartlouwers.earcut4j;
+package org.maplibre.earcut4j;
 
 import java.io.BufferedReader;
 import java.io.IOException;
