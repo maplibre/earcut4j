@@ -41,7 +41,7 @@ mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, automaticRelease = true)
     signAllPublications()
 
-    coordinates("nl.bartlouwers", "earcut4j", versionProvider.get())
+    coordinates("org.maplibre", "earcut4j", versionProvider.get())
 
     pom {
         name = "earcut4j"

@@ -5,7 +5,7 @@
 
 ## earcut4j
 
-[![CI](https://github.com/louwers/earcut4j/actions/workflows/ci.yml/badge.svg)](https://github.com/louwers/earcut4j/actions/workflows/ci.yml) [![Maven Central Version](https://img.shields.io/maven-central/v/nl.bartlouwers/earcut4j)](https://central.sonatype.com/artifact/nl.bartlouwers/earcut4j) [![](https://img.shields.io/badge/Slack-%23maplibre-2EB67D?logo=slack)](https://slack.openstreetmap.us/)
+[![CI](https://github.com/louwers/earcut4j/actions/workflows/ci.yml/badge.svg)](https://github.com/louwers/earcut4j/actions/workflows/ci.yml) [![Maven Central Version](https://img.shields.io/maven-central/v/org.maplibre/earcut4j)](https://central.sonatype.com/artifact/org.maplibre/earcut4j) [![](https://img.shields.io/badge/Slack-%23maplibre-2EB67D?logo=slack)](https://slack.openstreetmap.us/)
 
 This triangulation library is based on the javascript version located in [@mapbox/earcut](https://github.com/mapbox/earcut). It is a fork of [earcut4j/earcut4j](https://github.com/earcut4j/earcut4j) now maintained as a [MapLibre](https://maplibre.org/) project.
 
@@ -29,7 +29,7 @@ Download the latest version:
 
 ```XML
 <dependency>
-  <groupId>nl.bartlouwers</groupId>
+  <groupId>org.maplibre</groupId>
   <artifactId>earcut4j</artifactId>
   <version>3.0.0</version>
 </dependency>
@@ -39,7 +39,7 @@ Download the latest version:
 
 ```groovy
 dependencies {
-  compile "nl.bartlouwers:earcut4j:3.0.0"
+  compile "org.maplibre:earcut4j:3.0.0"
 }
 ```
 
